@@ -1,0 +1,26 @@
+{
+  "name": "fonasa-slack",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "bun run src/index.ts",
+    "dev": "bun --watch src/index.ts",
+    "test": "bun test",
+    "lint": "bunx biome check",
+    "lint:fix": "bunx biome check --write",
+    "install:browser": "bunx playwright install chromium"
+  },
+  "dependencies": {
+    "hono": "^4.12.12",
+    "@slack/socket-mode": "^2.0.6",
+    "@slack/web-api": "^7.15.0",
+    "playwright": "^1.59.1",
+    "zod": "^4.3.6",
+    "pino": "^9"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.4.11",
+    "@types/bun": "latest",
+    "pino-pretty": "^13"
+  }
+}
