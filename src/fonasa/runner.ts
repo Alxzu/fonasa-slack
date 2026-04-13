@@ -30,7 +30,9 @@ export async function runFonasa(input: RunnerInput): Promise<RunnerResult> {
     // ── Step 1: Fill holder data ──────────────────────────────────────
     log.info("Step 1: Filling holder data");
 
-    await page.goto(BPS_FORM_URL, { waitUntil: "networkidle" });
+    await page.goto(input.formUrl ?? BPS_FORM_URL, {
+      waitUntil: "networkidle",
+    });
 
     await page.locator('input[id$="txtEmpresat"]').fill(input.empresa);
     await page.locator('input[id$="txtRut"]').fill(input.rut);
@@ -117,23 +119,24 @@ export async function runFonasa(input: RunnerInput): Promise<RunnerResult> {
     }
     await page.waitForTimeout(300);
 
-    // Fill payment date via calendar widget
-    try {
-      const calendarIcons = page.locator('img[alt="calendario"]');
-      if ((await calendarIcons.count()) > 0) {
-        const dayNumber = input.paymentDate.split("/")[0].replace(/^0/, "");
-        await calendarIcons.last().click();
-        await page.waitForTimeout(500);
-        await page.getByRole("link", { name: dayNumber, exact: true }).click();
-        await page.waitForTimeout(300);
-      }
-    } catch {
-      log.warn("Payment date calendar not found, skipping");
-    }
-
-    // Dismiss any open datepicker overlay
-    await page.keyboard.press("Escape");
-    await page.waitForTimeout(300);
+    // Fill payment date directly (same evaluate approach as DOB in step 1)
+    await page.evaluate((dateValue: string) => {
+      const icons = document.querySelectorAll('img[alt="calendario"]');
+      const lastIcon = icons[icons.length - 1];
+      const td = lastIcon?.closest("td");
+      const el = td?.querySelector<HTMLInputElement>("input");
+      if (!el)
+        throw new Error("Could not find payment date input near calendar icon");
+      const setter = Object.getOwnPropertyDescriptor(
+        HTMLInputElement.prototype,
+        "value",
+      )?.set;
+      setter?.call(el, dateValue);
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+      el.dispatchEvent(new Event("change", { bubbles: true }));
+      el.dispatchEvent(new Event("blur", { bubbles: true }));
+    }, input.paymentDate);
+    await page.waitForTimeout(500);
 
     // Click Confirmar
     await page
@@ -183,6 +186,18 @@ export async function runFonasa(input: RunnerInput): Promise<RunnerResult> {
     log.info({ referencia }, "Invoice generated successfully");
 
     return { referencia, pdfPath, paymentLink };
+  } catch (err) {
+    const screenshotPath = join(OUTPUT_DIR, "debug_error.png");
+    try {
+      const pages = browser.contexts()[0]?.pages();
+      if (pages?.length) {
+        await pages[0].screenshot({ path: screenshotPath, fullPage: true });
+        log.info({ screenshotPath }, "Debug screenshot saved");
+      }
+    } catch {
+      // ignore screenshot errors
+    }
+    throw err;
   } finally {
     await browser.close();
   }

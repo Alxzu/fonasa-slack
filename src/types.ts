@@ -19,6 +19,7 @@ export interface RunnerInput {
   montoUYU: number;
   baseCalculo: number;
   paymentDate: string;
+  formUrl?: string;
 }
 
 export interface RunnerResult {
