@@ -117,33 +117,23 @@ export async function runFonasa(input: RunnerInput): Promise<RunnerResult> {
     }
     await page.waitForTimeout(300);
 
-    // Fill payment date by setting input value directly (same approach as DOB)
-    await page.evaluate(
-      ({ selector, dateValue }) => {
-        const el =
-          document.querySelector<HTMLInputElement>(selector) ??
-          (() => {
-            // Fallback: find the input closest to the last calendar icon
-            const icons = document.querySelectorAll('img[alt="calendario"]');
-            const lastIcon = icons[icons.length - 1];
-            return lastIcon?.parentElement?.querySelector("input");
-          })();
-        if (!el) throw new Error("Could not find payment date input");
-        const setter = Object.getOwnPropertyDescriptor(
-          HTMLInputElement.prototype,
-          "value",
-        )?.set;
-        setter?.call(el, dateValue);
-        el.dispatchEvent(new Event("input", { bubbles: true }));
-        el.dispatchEvent(new Event("change", { bubbles: true }));
-        el.dispatchEvent(new Event("blur", { bubbles: true }));
-      },
-      {
-        selector: 'input[id$="txtFechaPago"], input[id*="fecha"][id*="pago"]',
-        dateValue: input.paymentDate,
-      },
-    );
-    await page.waitForTimeout(500);
+    // Fill payment date via calendar widget
+    try {
+      const calendarIcons = page.locator('img[alt="calendario"]');
+      if ((await calendarIcons.count()) > 0) {
+        const dayNumber = input.paymentDate.split("/")[0].replace(/^0/, "");
+        await calendarIcons.last().click();
+        await page.waitForTimeout(500);
+        await page.getByRole("link", { name: dayNumber, exact: true }).click();
+        await page.waitForTimeout(300);
+      }
+    } catch {
+      log.warn("Payment date calendar not found, skipping");
+    }
+
+    // Dismiss any open datepicker overlay
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(300);
 
     // Click Confirmar
     await page
