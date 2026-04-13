@@ -69,6 +69,67 @@ export async function runFonasa(input: RunnerInput): Promise<RunnerResult> {
 
     await page.waitForTimeout(1000);
 
+    // Log all form elements for debugging
+    const formElements = await page.evaluate(() =>
+      Array.from(document.querySelectorAll("input, select")).map((el) => ({
+        tag: el.tagName,
+        id: el.id,
+        name: el.getAttribute("name"),
+        type: el.getAttribute("type"),
+        value: (el as HTMLInputElement).value,
+      })),
+    );
+    log.info({ formElements }, "Step 3 form elements");
+
+    // Set billing period (Mes Cargo Desde/Hasta) from payment date
+    const [, payMonth, payYear] = input.paymentDate.split("/");
+    const billingPeriod = `${payMonth}/${payYear}`;
+    for (const suffix of ["mesCargoDesde", "MesDesde", "mesDesde"]) {
+      const mesDesde = page.locator(`input[id$="${suffix}"]`).first();
+      if ((await mesDesde.count()) > 0) {
+        await page.evaluate(
+          ({ sel, val }) => {
+            const el = document.querySelector<HTMLInputElement>(sel);
+            if (!el) return;
+            const setter = Object.getOwnPropertyDescriptor(
+              HTMLInputElement.prototype,
+              "value",
+            )?.set;
+            setter?.call(el, val);
+            el.dispatchEvent(new Event("input", { bubbles: true }));
+            el.dispatchEvent(new Event("change", { bubbles: true }));
+            el.dispatchEvent(new Event("blur", { bubbles: true }));
+          },
+          { sel: `input[id$="${suffix}"]`, val: billingPeriod },
+        );
+        log.info({ suffix, billingPeriod }, "Set Mes Cargo Desde");
+        break;
+      }
+    }
+    for (const suffix of ["mesCargoHasta", "MesHasta", "mesHasta"]) {
+      const mesHasta = page.locator(`input[id$="${suffix}"]`).first();
+      if ((await mesHasta.count()) > 0) {
+        await page.evaluate(
+          ({ sel, val }) => {
+            const el = document.querySelector<HTMLInputElement>(sel);
+            if (!el) return;
+            const setter = Object.getOwnPropertyDescriptor(
+              HTMLInputElement.prototype,
+              "value",
+            )?.set;
+            setter?.call(el, val);
+            el.dispatchEvent(new Event("input", { bubbles: true }));
+            el.dispatchEvent(new Event("change", { bubbles: true }));
+            el.dispatchEvent(new Event("blur", { bubbles: true }));
+          },
+          { sel: `input[id$="${suffix}"]`, val: billingPeriod },
+        );
+        log.info({ suffix, billingPeriod }, "Set Mes Cargo Hasta");
+        break;
+      }
+    }
+    await page.waitForTimeout(500);
+
     // Tax type select — always IRPF
     try {
       const impuestoSelect = page
