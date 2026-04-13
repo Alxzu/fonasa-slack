@@ -104,14 +104,10 @@ export async function runFonasa(input: RunnerInput): Promise<RunnerResult> {
       return false;
     };
 
-    // Try common suffixes for Mes Cargo Desde
-    for (const s of ["mesCargoDesde", "MesDesde", "mesDesde", "txtMesDesde"]) {
-      if (await setDateField(s)) break;
-    }
-    // Try common suffixes for Mes Cargo Hasta
-    for (const s of ["mesCargoHasta", "MesHasta", "mesHasta", "txtMesHasta"]) {
-      if (await setDateField(s)) break;
-    }
+    // Set Mes Cargo Desde (real BPS ID: frmBasico:txtFechaDesde)
+    await setDateField("txtFechaDesde");
+    // Set Mes Cargo Hasta (real BPS ID: frmBasico:txtFechaHasta)
+    await setDateField("txtFechaHasta");
     await page.waitForTimeout(500);
 
     await page.getByRole("link", { name: "Siguiente >" }).click();
