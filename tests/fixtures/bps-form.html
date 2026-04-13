@@ -5,9 +5,9 @@
   <title>BPS FONASA Mock Form</title>
   <style>
     .step { display: none; }
-                    .step.active { display: block; }
-                    table { border-collapse: collapse; }
-                    td { padding: 4px 8px; }
+                        .step.active { display: block; }
+                        table { border-collapse: collapse; }
+                        td { padding: 4px 8px; }
   </style>
 </head>
 <body>
@@ -35,16 +35,10 @@
     <a href="#" role="link" onclick="goToStep(2); return false;">Siguiente &gt;</a>
   </div>
 
-  <!-- Step 2: Invoice type (pre-selected) -->
+  <!-- Step 2: Invoice type & billing period -->
   <div id="step2" class="step">
     <h2>Tipo de Factura</h2>
     <p>Tipo: FONASA (pre-selected)</p>
-    <a href="#" role="link" onclick="goToStep(3); return false;">Siguiente &gt;</a>
-  </div>
-
-  <!-- Step 3: Invoice data -->
-  <div id="step3" class="step">
-    <h2>Datos de Factura</h2>
     <table>
       <tr>
         <td>Mes Cargo Desde</td>
@@ -54,6 +48,14 @@
         <td>Mes Cargo Hasta</td>
         <td><input type="text" id="frmBasico:mesCargoHasta" /></td>
       </tr>
+    </table>
+    <a href="#" role="link" onclick="goToStep(3); return false;">Siguiente &gt;</a>
+  </div>
+
+  <!-- Step 3: Invoice data -->
+  <div id="step3" class="step">
+    <h2>Datos de Factura</h2>
+    <table>
       <tr>
         <td>Impuesto</td>
         <td>
@@ -101,95 +103,95 @@
 
   <script>
     let currentStep = 1;
-                    const capturedData = {};
+                        const capturedData = {};
 
-                    function goToStep(step) {
-                      // Capture step 1 data
-                      if (currentStep === 1) {
-                        capturedData.empresa = document.getElementById('form:txtEmpresat').value;
-                        capturedData.rut = document.getElementById('form:txtRut').value;
-                        capturedData.documento = document.getElementById('form:txtDocumento').value;
-                        capturedData.fechaNac = document.getElementById('form:txtFechaNac').value;
-                      }
-
-                      document.getElementById('step' + currentStep).classList.remove('active');
-                      currentStep = step;
-                      document.getElementById('step' + currentStep).classList.add('active');
-                    }
-
-                    function openCalendar() {
-                      const popup = document.getElementById('calendarPopup');
-                      const daysContainer = document.getElementById('calendarDays');
-                      daysContainer.innerHTML = '';
-
-                      // Generate day links (1-31)
-                      for (let i = 1; i <= 31; i++) {
-                        const link = document.createElement('a');
-                        link.href = '#';
-                        link.textContent = String(i);
-                        link.role = 'link';
-                        link.style.margin = '2px';
-                        link.onclick = (e) => {
-                          e.preventDefault();
-                          const dateInput = document.getElementById('form:txtFechaPago');
-                          // Just set the day part — keep existing month/year or use current
-                          const currentVal = dateInput.value;
-                          const day = String(i).padStart(2, '0');
-                          if (currentVal && currentVal.includes('/')) {
-                            const parts = currentVal.split('/');
-                            dateInput.value = day + '/' + parts[1] + '/' + parts[2];
-                          } else {
-                            const now = new Date();
-                            dateInput.value = day + '/' + String(now.getMonth() + 1).padStart(2, '0') + '/' + now.getFullYear();
+                        function goToStep(step) {
+                          // Capture step 1 data
+                          if (currentStep === 1) {
+                            capturedData.empresa = document.getElementById('form:txtEmpresat').value;
+                            capturedData.rut = document.getElementById('form:txtRut').value;
+                            capturedData.documento = document.getElementById('form:txtDocumento').value;
+                            capturedData.fechaNac = document.getElementById('form:txtFechaNac').value;
                           }
-                          popup.style.display = 'none';
-                        };
-                        daysContainer.appendChild(link);
-                        daysContainer.appendChild(document.createTextNode(' '));
-                      }
 
-                      popup.style.display = 'block';
-                    }
+                          document.getElementById('step' + currentStep).classList.remove('active');
+                          currentStep = step;
+                          document.getElementById('step' + currentStep).classList.add('active');
+                        }
 
-                    function confirmInvoice() {
-                      // Capture step 3 data
-                      capturedData.impuesto = document.querySelector('[name="form:impuesto"]').value;
-                      capturedData.monto = document.querySelector('[name="j_id46"]').value;
-                      capturedData.base = document.querySelector('[alt="profImporte"]').value;
-                      capturedData.fechaPago = document.getElementById('form:txtFechaPago').value;
+                        function openCalendar() {
+                          const popup = document.getElementById('calendarPopup');
+                          const daysContainer = document.getElementById('calendarDays');
+                          daysContainer.innerHTML = '';
 
-                      // Generate a reference number
-                      const ref = '1' + Date.now().toString().slice(-9);
-                      document.getElementById('refDisplay').textContent = ref;
-                      document.getElementById('payLink').href = 'https://pagar.bps.gub.uy/pago?ref=' + ref;
+                          // Generate day links (1-31)
+                          for (let i = 1; i <= 31; i++) {
+                            const link = document.createElement('a');
+                            link.href = '#';
+                            link.textContent = String(i);
+                            link.role = 'link';
+                            link.style.margin = '2px';
+                            link.onclick = (e) => {
+                              e.preventDefault();
+                              const dateInput = document.getElementById('form:txtFechaPago');
+                              // Just set the day part — keep existing month/year or use current
+                              const currentVal = dateInput.value;
+                              const day = String(i).padStart(2, '0');
+                              if (currentVal && currentVal.includes('/')) {
+                                const parts = currentVal.split('/');
+                                dateInput.value = day + '/' + parts[1] + '/' + parts[2];
+                              } else {
+                                const now = new Date();
+                                dateInput.value = day + '/' + String(now.getMonth() + 1).padStart(2, '0') + '/' + now.getFullYear();
+                              }
+                              popup.style.display = 'none';
+                            };
+                            daysContainer.appendChild(link);
+                            daysContainer.appendChild(document.createTextNode(' '));
+                          }
 
-                      // Store data for download validation
-                      window.__capturedData = { ...capturedData, ref };
+                          popup.style.display = 'block';
+                        }
 
-                      goToStep(4);
-                    }
+                        function confirmInvoice() {
+                          // Capture step 3 data
+                          capturedData.impuesto = document.querySelector('[name="form:impuesto"]').value;
+                          capturedData.monto = document.querySelector('[name="j_id46"]').value;
+                          capturedData.base = document.querySelector('[alt="profImporte"]').value;
+                          capturedData.fechaPago = document.getElementById('form:txtFechaPago').value;
 
-                    function downloadPdf() {
-                      // Generate a minimal PDF-like file for download
-                      const ref = window.__capturedData?.ref || '1234567890';
-                      const content = '%PDF-1.4 mock invoice ' + ref;
-                      const blob = new Blob([content], { type: 'application/pdf' });
-                      const url = URL.createObjectURL(blob);
-                      const a = document.createElement('a');
-                      a.href = url;
-                      a.download = 'FacturaBPS_' + ref + '.pdf';
-                      document.body.appendChild(a);
-                      a.click();
-                      document.body.removeChild(a);
-                      URL.revokeObjectURL(url);
-                    }
+                          // Generate a reference number
+                          const ref = '1' + Date.now().toString().slice(-9);
+                          document.getElementById('refDisplay').textContent = ref;
+                          document.getElementById('payLink').href = 'https://pagar.bps.gub.uy/pago?ref=' + ref;
 
-                    // Close calendar on Escape
-                    document.addEventListener('keydown', (e) => {
-                      if (e.key === 'Escape') {
-                        document.getElementById('calendarPopup').style.display = 'none';
-                      }
-                    });
+                          // Store data for download validation
+                          window.__capturedData = { ...capturedData, ref };
+
+                          goToStep(4);
+                        }
+
+                        function downloadPdf() {
+                          // Generate a minimal PDF-like file for download
+                          const ref = window.__capturedData?.ref || '1234567890';
+                          const content = '%PDF-1.4 mock invoice ' + ref;
+                          const blob = new Blob([content], { type: 'application/pdf' });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = 'FacturaBPS_' + ref + '.pdf';
+                          document.body.appendChild(a);
+                          a.click();
+                          document.body.removeChild(a);
+                          URL.revokeObjectURL(url);
+                        }
+
+                        // Close calendar on Escape
+                        document.addEventListener('keydown', (e) => {
+                          if (e.key === 'Escape') {
+                            document.getElementById('calendarPopup').style.display = 'none';
+                          }
+                        });
   </script>
 </body>
 </html>

@@ -58,8 +58,61 @@ export async function runFonasa(input: RunnerInput): Promise<RunnerResult> {
     await page.getByRole("link", { name: "Siguiente >" }).click();
     await page.waitForLoadState("networkidle");
 
-    // ── Step 2: Invoice type (defaults are pre-selected) ─────────────
+    // ── Step 2: Invoice type & billing period ─────────────────────────
     log.info("Step 2: Selecting invoice type");
+
+    await page.waitForTimeout(1000);
+
+    // Log step 2 form elements for debugging
+    const step2Elements = await page.evaluate(() =>
+      Array.from(document.querySelectorAll("input, select")).map((el) => ({
+        tag: el.tagName,
+        id: el.id,
+        name: el.getAttribute("name"),
+        type: el.getAttribute("type"),
+        value: (el as HTMLInputElement).value,
+        cls: el.className,
+      })),
+    );
+    log.info({ step2Elements }, "Step 2 form elements");
+
+    // Set billing period (Mes Cargo Desde/Hasta) from payment date
+    const [, payMonth, payYear] = input.paymentDate.split("/");
+    const billingPeriod = `${payMonth}/${payYear}`;
+
+    const setDateField = async (idSuffix: string) => {
+      const locator = page.locator(`input[id$="${idSuffix}"]`).first();
+      if ((await locator.count()) > 0) {
+        await page.evaluate(
+          ({ sel, val }) => {
+            const el = document.querySelector<HTMLInputElement>(sel);
+            if (!el) return;
+            const setter = Object.getOwnPropertyDescriptor(
+              HTMLInputElement.prototype,
+              "value",
+            )?.set;
+            setter?.call(el, val);
+            el.dispatchEvent(new Event("input", { bubbles: true }));
+            el.dispatchEvent(new Event("change", { bubbles: true }));
+            el.dispatchEvent(new Event("blur", { bubbles: true }));
+          },
+          { sel: `input[id$="${idSuffix}"]`, val: billingPeriod },
+        );
+        log.info({ idSuffix, billingPeriod }, "Set billing period field");
+        return true;
+      }
+      return false;
+    };
+
+    // Try common suffixes for Mes Cargo Desde
+    for (const s of ["mesCargoDesde", "MesDesde", "mesDesde", "txtMesDesde"]) {
+      if (await setDateField(s)) break;
+    }
+    // Try common suffixes for Mes Cargo Hasta
+    for (const s of ["mesCargoHasta", "MesHasta", "mesHasta", "txtMesHasta"]) {
+      if (await setDateField(s)) break;
+    }
+    await page.waitForTimeout(500);
 
     await page.getByRole("link", { name: "Siguiente >" }).click();
     await page.waitForLoadState("networkidle");
@@ -68,67 +121,6 @@ export async function runFonasa(input: RunnerInput): Promise<RunnerResult> {
     log.info("Step 3: Filling invoice data");
 
     await page.waitForTimeout(1000);
-
-    // Log all form elements for debugging
-    const formElements = await page.evaluate(() =>
-      Array.from(document.querySelectorAll("input, select")).map((el) => ({
-        tag: el.tagName,
-        id: el.id,
-        name: el.getAttribute("name"),
-        type: el.getAttribute("type"),
-        value: (el as HTMLInputElement).value,
-      })),
-    );
-    log.info({ formElements }, "Step 3 form elements");
-
-    // Set billing period (Mes Cargo Desde/Hasta) from payment date
-    const [, payMonth, payYear] = input.paymentDate.split("/");
-    const billingPeriod = `${payMonth}/${payYear}`;
-    for (const suffix of ["mesCargoDesde", "MesDesde", "mesDesde"]) {
-      const mesDesde = page.locator(`input[id$="${suffix}"]`).first();
-      if ((await mesDesde.count()) > 0) {
-        await page.evaluate(
-          ({ sel, val }) => {
-            const el = document.querySelector<HTMLInputElement>(sel);
-            if (!el) return;
-            const setter = Object.getOwnPropertyDescriptor(
-              HTMLInputElement.prototype,
-              "value",
-            )?.set;
-            setter?.call(el, val);
-            el.dispatchEvent(new Event("input", { bubbles: true }));
-            el.dispatchEvent(new Event("change", { bubbles: true }));
-            el.dispatchEvent(new Event("blur", { bubbles: true }));
-          },
-          { sel: `input[id$="${suffix}"]`, val: billingPeriod },
-        );
-        log.info({ suffix, billingPeriod }, "Set Mes Cargo Desde");
-        break;
-      }
-    }
-    for (const suffix of ["mesCargoHasta", "MesHasta", "mesHasta"]) {
-      const mesHasta = page.locator(`input[id$="${suffix}"]`).first();
-      if ((await mesHasta.count()) > 0) {
-        await page.evaluate(
-          ({ sel, val }) => {
-            const el = document.querySelector<HTMLInputElement>(sel);
-            if (!el) return;
-            const setter = Object.getOwnPropertyDescriptor(
-              HTMLInputElement.prototype,
-              "value",
-            )?.set;
-            setter?.call(el, val);
-            el.dispatchEvent(new Event("input", { bubbles: true }));
-            el.dispatchEvent(new Event("change", { bubbles: true }));
-            el.dispatchEvent(new Event("blur", { bubbles: true }));
-          },
-          { sel: `input[id$="${suffix}"]`, val: billingPeriod },
-        );
-        log.info({ suffix, billingPeriod }, "Set Mes Cargo Hasta");
-        break;
-      }
-    }
-    await page.waitForTimeout(500);
 
     // Tax type select — always IRPF
     try {
