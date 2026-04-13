@@ -21,6 +21,7 @@ function parseSubcommand(text: string): { subcommand: string; args: string } {
   if (trimmed.startsWith("help")) return { subcommand: "help", args: "" };
   if (trimmed.startsWith("<@")) return { subcommand: "invoice", args: trimmed };
   if (trimmed.startsWith("@")) return { subcommand: "invoice", args: trimmed };
+  if (/^\d/.test(trimmed)) return { subcommand: "invoice", args: trimmed };
   return { subcommand: "help", args: "" };
 }
 

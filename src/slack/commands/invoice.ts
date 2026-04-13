@@ -14,19 +14,15 @@ import type { ProfileRow } from "../../types";
 import { decrypt } from "../../utils/crypto";
 import { formatDateES, parseDateES } from "../../utils/date";
 import { getExchangeRate } from "../../utils/exchange-rate";
-import { RateLimiter } from "../../utils/rate-limit";
 import { openDM, postMessage, uploadFile } from "../client";
 import {
   buildAuthError,
   buildInvoiceError,
   buildInvoiceStarted,
   buildInvoiceSummary,
-  buildRateLimited,
 } from "../messages";
 
 const log = logger.child({ module: "cmd:invoice" });
-
-const rateLimiter = new RateLimiter(5, 60 * 60 * 1000);
 
 let activeRuns = 0;
 const MAX_CONCURRENT = 2;
@@ -55,16 +51,18 @@ export async function handleInvoice(
       .trim();
   } else {
     const plainMatch = text.match(PLAIN_MENTION_RE);
-    if (!plainMatch) {
-      return "Usage: `/fonasa @name <monto_usd> [DD/MM/YYYY]`";
+    if (plainMatch) {
+      targetName = plainMatch[1];
+      rest = text.slice((plainMatch.index ?? 0) + plainMatch[0].length).trim();
+    } else {
+      // No mention — use caller's own profile
+      rest = text.trim();
     }
-    targetName = plainMatch[1];
-    rest = text.slice((plainMatch.index ?? 0) + plainMatch[0].length).trim();
   }
   const parts = rest.split(/\s+/).filter(Boolean);
 
   if (parts.length === 0) {
-    return "Usage: `/fonasa @you <monto_usd> [DD/MM/YYYY]`";
+    return "Usage: `/fonasa <monto_usd> [DD/MM/YYYY]`";
   }
 
   const montoUSD = parseFloat(parts[0]);
@@ -82,12 +80,7 @@ export async function handleInvoice(
     }
   }
 
-  const rateCheck = rateLimiter.check(userId);
-  if (!rateCheck.allowed) {
-    return buildRateLimited(rateCheck.retryAfterMs ?? 0).text;
-  }
-
-  let profile = await getProfile(workspaceId, targetName);
+  let profile = targetName ? await getProfile(workspaceId, targetName) : null;
   if (!profile) {
     profile = await getProfileByUserId(workspaceId, userId);
   }

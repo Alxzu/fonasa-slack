@@ -162,7 +162,7 @@ export function buildHelpMessage(): SlackMessage {
           type: "mrkdwn",
           text: [
             "`/fonasa setup` - Configure your FONASA profile",
-            "`/fonasa @you <monto_usd> [DD/MM/YYYY]` - Generate an invoice",
+            "`/fonasa <monto_usd> [DD/MM/YYYY]` - Generate an invoice",
             "`/fonasa clear @you` - Delete your profile",
             "`/fonasa telemetry [days]` - View usage statistics",
             "`/fonasa help` - Show this message",
@@ -259,17 +259,6 @@ export function buildAuthError(): SlackMessage {
     text,
     blocks: [
       { type: "section", text: { type: "mrkdwn", text: `:no_entry: ${text}` } },
-    ],
-  };
-}
-
-export function buildRateLimited(retryAfterMs: number): SlackMessage {
-  const minutes = Math.ceil(retryAfterMs / 60_000);
-  const text = `Rate limit exceeded. Try again in ${minutes} minute${minutes !== 1 ? "s" : ""}.`;
-  return {
-    text,
-    blocks: [
-      { type: "section", text: { type: "mrkdwn", text: `:clock1: ${text}` } },
     ],
   };
 }
