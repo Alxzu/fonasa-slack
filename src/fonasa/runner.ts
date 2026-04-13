@@ -117,33 +117,27 @@ export async function runFonasa(input: RunnerInput): Promise<RunnerResult> {
     }
     await page.waitForTimeout(300);
 
-    // Fill payment date by setting input value directly (same approach as DOB)
-    await page.evaluate(
-      ({ selector, dateValue }) => {
-        const el =
-          document.querySelector<HTMLInputElement>(selector) ??
-          (() => {
-            // Fallback: find the input closest to the last calendar icon
-            const icons = document.querySelectorAll('img[alt="calendario"]');
-            const lastIcon = icons[icons.length - 1];
-            return lastIcon?.parentElement?.querySelector("input");
-          })();
-        if (!el) throw new Error("Could not find payment date input");
-        const setter = Object.getOwnPropertyDescriptor(
-          HTMLInputElement.prototype,
-          "value",
-        )?.set;
-        setter?.call(el, dateValue);
-        el.dispatchEvent(new Event("input", { bubbles: true }));
-        el.dispatchEvent(new Event("change", { bubbles: true }));
-        el.dispatchEvent(new Event("blur", { bubbles: true }));
-      },
-      {
-        selector: 'input[id$="txtFechaPago"], input[id*="fecha"][id*="pago"]',
-        dateValue: input.paymentDate,
-      },
-    );
-    await page.waitForTimeout(500);
+    // Fill payment date — find the input next to the last calendar icon
+    const dateInputId = await page.evaluate(() => {
+      const icons = document.querySelectorAll('img[alt="calendario"]');
+      const lastIcon = icons[icons.length - 1];
+      const input = lastIcon
+        ?.closest("td")
+        ?.querySelector("input[type='text']");
+      return input?.id ?? null;
+    });
+
+    if (dateInputId) {
+      const escapedId = dateInputId.replace(/:/g, "\\:");
+      const dateInput = page.locator(`#${escapedId}`);
+      await dateInput.clear();
+      await dateInput.fill(input.paymentDate);
+      await dateInput.press("Tab");
+      await page.waitForTimeout(500);
+      log.info({ dateInputId, date: input.paymentDate }, "Payment date set");
+    } else {
+      log.warn("Payment date input not found, form will use default date");
+    }
 
     // Click Confirmar
     await page
@@ -193,6 +187,19 @@ export async function runFonasa(input: RunnerInput): Promise<RunnerResult> {
     log.info({ referencia }, "Invoice generated successfully");
 
     return { referencia, pdfPath, paymentLink };
+  } catch (err) {
+    // Save debug screenshot (no sensitive data is visible at step 3+)
+    const screenshotPath = join(OUTPUT_DIR, "debug_error.png");
+    try {
+      const pages = browser.contexts()[0]?.pages();
+      if (pages?.length) {
+        await pages[0].screenshot({ path: screenshotPath, fullPage: true });
+        log.info({ screenshotPath }, "Debug screenshot saved");
+      }
+    } catch {
+      // ignore screenshot errors
+    }
+    throw err;
   } finally {
     await browser.close();
   }
